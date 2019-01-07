@@ -4,8 +4,10 @@
   become_method: sudo
   vars:
     loopback_address: 10.254.254.254
+    local_username: "{{ lookup('env','USER') }}"
 
   tasks:
+
     - name: make sure dnsmasq is installed
       homebrew:
         name: dnsmasq
@@ -26,10 +28,23 @@
         dest: /usr/local/etc/dnsmasq.d/localdev.conf
       notify: restart dnsmasq
 
+    - name: create resolver directory
+      file:
+        state: directory
+        path: /etc/resolver
+        owner: root
+        group: wheel
+        mode: 0755
+      become: yes    
+
     - name: copy mac resolver config
       template:
         src: localdev.j2
         dest: /etc/resolver/localdev
+        owner: "{{ local_username }}"
+        group: wheel
+        mode: 0644
+      become: yes
 
     - name: add an alias for lo0
       command: "/sbin/ifconfig lo0 alias {{ loopback_address }}"
