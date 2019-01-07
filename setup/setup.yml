@@ -1,0 +1,55 @@
+- hosts: 127.0.0.1
+  connection: local
+  become: no
+  become_method: sudo
+  vars:
+    loopback_address: 10.254.254.254
+
+  tasks:
+    - name: make sure dnsmasq is installed
+      homebrew:
+        name: dnsmasq
+        state: present
+        update_homebrew: yes
+    
+    - name: uncomment the dnsmasq.d/*.conf configuration line
+      replace:
+        path: /usr/local/etc/dnsmasq.conf
+        regexp: '^#conf-dir\=\/usr\/local\/etc\/dnsmasq\.d/,\*\.conf$'
+        replace: 'conf-dir=/usr/local/etc/dnsmasq.d/,*.conf'
+        backup: yes
+      notify: restart dnsmasq
+
+    - name: copy dnsmasq configuration for local development
+      template:
+        src: localdev.conf.j2
+        dest: /usr/local/etc/dnsmasq.d/localdev.conf
+      notify: restart dnsmasq
+
+    - name: copy mac resolver config
+      template:
+        src: localdev.j2
+        dest: /etc/resolver/localdev
+
+    - name: add an alias for lo0
+      command: "/sbin/ifconfig lo0 alias {{ loopback_address }}"
+      become: yes
+    
+    - name: make loopback_address persistent
+      template:
+        src: net.outfielding.loopback1.plist.j2
+        dest: /Library/LaunchDaemons/net.outfielding.loopback1.plist
+        owner: root
+        group: wheel
+        mode: 0644
+      become: yes
+      notify: launchctl load loopback
+
+  handlers:
+    - name: restart dnsmasq
+      command: /usr/local/bin/brew services restart dnsmasq
+      become: yes
+
+    - name: launchctl load loopback
+      command: /bin/launchctl load /Library/LaunchDaemons/net.outfielding.loopback1.plist
+      become: yes
