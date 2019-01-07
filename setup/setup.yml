@@ -8,11 +8,15 @@
 
   tasks:
 
+    - name: brew tap services
+      command: /usr/local/bin/brew tap homebrew/services
+
     - name: make sure dnsmasq is installed
       homebrew:
         name: dnsmasq
         state: present
         update_homebrew: yes
+
     
     - name: uncomment the dnsmasq.d/*.conf configuration line
       replace:
